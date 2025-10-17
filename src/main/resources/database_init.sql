@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS orders (
     remark TEXT,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                                      seller_id int not null,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
     );
 
@@ -105,6 +106,24 @@ ALTER TABLE users
 ALTER TABLE products
     MODIFY COLUMN status VARCHAR(20)
         NOT NULL DEFAULT 'ON_SALE';
+
+-- 1. 为 orders 表添加 seller_id 列
+ALTER TABLE orders ADD COLUMN seller_id BIGINT;
+
+-- 2. 添加外键约束（可选）
+ALTER TABLE orders ADD CONSTRAINT fk_orders_seller
+    FOREIGN KEY (seller_id) REFERENCES users(id);
+
+-- 3. 更新现有订单的 seller_id
+UPDATE orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    JOIN products p ON oi.product_id = p.id
+SET o.seller_id = p.seller_id
+WHERE o.seller_id IS NULL;
+
+-- 4. 将 seller_id 设置为 NOT NULL（在数据填充后）
+ALTER TABLE orders MODIFY COLUMN seller_id BIGINT NOT NULL;
+
 -- 创建索引以提高查询性能
 CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
