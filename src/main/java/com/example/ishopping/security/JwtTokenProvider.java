@@ -14,14 +14,22 @@ import java.util.Date;
 @Component
 public class JwtTokenProvider {
 
-    @Value("${jwt.secret:defaultSecretKeyForDevelopmentUseOnly}")
+    @Value("${jwt.secret:defaultSecretKeyForDevelopmentUseOnlyChangeInProduction}")
     private String jwtSecret;
 
     @Value("${jwt.expiration:86400000}") // 默认24小时
     private long jwtExpiration;
 
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes());
+        // 确保密钥长度足够
+        byte[] keyBytes = jwtSecret.getBytes();
+        if (keyBytes.length < 32) {
+            // 如果密钥太短，进行填充
+            byte[] paddedKey = new byte[32];
+            System.arraycopy(keyBytes, 0, paddedKey, 0, Math.min(keyBytes.length, 32));
+            return Keys.hmacShaKeyFor(paddedKey);
+        }
+        return Keys.hmacShaKeyFor(keyBytes);
     }
 
     public String generateToken(String username, String role) {
@@ -38,34 +46,29 @@ public class JwtTokenProvider {
     }
 
     public String getUsernameFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
+        Claims claims = getClaimsFromToken(token);
         return claims.getSubject();
     }
 
     public String getRoleFromToken(String token) {
-        Claims claims = Jwts.parserBuilder()
-                .setSigningKey(getSigningKey())
-                .build()
-                .parseClaimsJws(token)
-                .getBody();
-
+        Claims claims = getClaimsFromToken(token);
         return claims.get("role", String.class);
     }
 
     public boolean validateToken(String token) {
         try {
-            Jwts.parserBuilder()
-                    .setSigningKey(getSigningKey())
-                    .build()
-                    .parseClaimsJws(token);
+            getClaimsFromToken(token);
             return true;
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    private Claims getClaimsFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody();
     }
 }

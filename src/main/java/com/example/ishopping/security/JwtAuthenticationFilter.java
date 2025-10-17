@@ -14,7 +14,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @Component
@@ -38,17 +38,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 String username = tokenProvider.getUsernameFromToken(jwt);
                 String role = tokenProvider.getRoleFromToken(jwt);
 
-                // 调试信息 - 打印认证详情
-                logger.info("JWT Authentication - User: " + username + ", Role: " + role);
-                logger.info("Request URL: " + request.getRequestURL());
+                // 调试信息
+                System.out.println("=== JWT Authentication Debug ===");
+                System.out.println("Username: " + username);
+                System.out.println("Role: " + role);
+                System.out.println("Request URI: " + request.getRequestURI());
 
-                // 创建包含角色的认证信息 - 提供两种权限格式
-                List<SimpleGrantedAuthority> authorities = Arrays.asList(
-                        new SimpleGrantedAuthority("ROLE_" + role),  // ROLE_SELLER
-                        new SimpleGrantedAuthority(role)             // SELLER
+                // 创建包含角色的认证信息
+                List<SimpleGrantedAuthority> authorities = Collections.singletonList(
+                        new SimpleGrantedAuthority("ROLE_" + role)
                 );
 
-                logger.info("Granted Authorities: " + authorities);
+                System.out.println("Authorities: " + authorities);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(username, null, authorities);
@@ -56,12 +57,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 SecurityContextHolder.getContext().setAuthentication(authentication);
 
-                logger.info("Authentication set in SecurityContext for user: " + username);
+                System.out.println("Authentication successful for user: " + username);
+                System.out.println("==================================");
             } else {
-                logger.info("No valid JWT token found in request");
+                System.out.println("No valid JWT token found");
             }
         } catch (Exception ex) {
-            logger.error("Could not set user authentication in security context", ex);
+            System.err.println("Could not set user authentication in security context: " + ex.getMessage());
+            ex.printStackTrace();
         }
 
         filterChain.doFilter(request, response);

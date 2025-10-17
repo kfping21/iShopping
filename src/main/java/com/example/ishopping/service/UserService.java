@@ -44,6 +44,7 @@ public class UserService {
         user.setRole(role);
 
         user.setCreateTime(LocalDateTime.now());
+        user.setUpdateTime(LocalDateTime.now());
 
         return userRepository.save(user);
     }

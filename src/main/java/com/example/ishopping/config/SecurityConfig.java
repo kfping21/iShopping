@@ -21,7 +21,7 @@ import java.util.Arrays;
 
 @Configuration
 @EnableWebSecurity
-@EnableMethodSecurity(prePostEnabled = true)  // 添加 prePostEnabled = true
+@EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
 
     @Autowired
@@ -35,7 +35,7 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .cors(cors -> cors.configurationSource(corsConfigurationSource()))  // 启用 CORS 配置
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
@@ -43,8 +43,13 @@ public class SecurityConfig {
                         .requestMatchers("/", "/index.html", "/error", "/favicon.ico").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
 
-                        // 商品相关路径 - 需要认证但具体权限由方法级安全控制
-                        .requestMatchers("/api/products/**").authenticated()
+                        // 商品相关接口权限
+                        .requestMatchers("/api/products", "/api/products/").permitAll()  // 商品列表公开
+                        .requestMatchers("/api/products/**").authenticated()  // 具体商品需要认证
+
+                        // 订单和购物车需要认证
+                        .requestMatchers("/api/orders/**").authenticated()
+                        .requestMatchers("/api/cart/**").authenticated()
 
                         // 管理员路径
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
@@ -64,7 +69,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));  // 允许所有源
+        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);

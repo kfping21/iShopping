@@ -26,6 +26,7 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
             User user = userService.register(request);
+            // 修复：添加角色参数
             String token = tokenProvider.generateToken(user.getUsername(), user.getRole().name());
 
             return ResponseEntity.ok(new AuthResponse(token, user));
@@ -38,6 +39,7 @@ public class AuthController {
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest request) {
         try {
             User user = userService.authenticate(request);
+            // 修复：添加角色参数
             String token = tokenProvider.generateToken(user.getUsername(), user.getRole().name());
 
             return ResponseEntity.ok(new AuthResponse(token, user));
