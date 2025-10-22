@@ -6,12 +6,12 @@ import com.example.ishopping.repository.OrderRepository;
 import com.example.ishopping.repository.UserRepository;
 import com.example.ishopping.repository.ProductRepository;
 import com.example.ishopping.repository.OrderItemRepository;
+import com.example.ishopping.util.UserContext;
+import org.hibernate.Hibernate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -49,6 +49,7 @@ public class OrderService {
 
         // 创建订单对象
         Order order = new Order();
+        String orderNumber = generateOrderNumber();
         order.setOrderNumber(generateOrderNumber());
         order.setUserId(currentUser.getId());
         order.setShippingAddress(request.getShippingAddress());
@@ -60,6 +61,10 @@ public class OrderService {
         order.setStatus(OrderStatus.PENDING);
         order.setCreateTime(LocalDateTime.now());
         order.setUpdateTime(LocalDateTime.now());
+
+        System.out.println("生成的订单号: " + orderNumber);
+        System.out.println("收货地址: " + request.getShippingAddress());
+        System.out.println("订单项数量: " + request.getOrderItems().size());
 
         // 处理订单项
         List<OrderItem> orderItems = new ArrayList<>();
@@ -115,6 +120,7 @@ public class OrderService {
 
         // 保存订单
         Order savedOrder = orderRepository.save(order);
+        System.out.println("订单创建成功，ID: " + savedOrder.getId());
 
         // 保存订单项并更新库存
         for (OrderItem item : orderItems) {
@@ -128,7 +134,7 @@ public class OrderService {
             productRepository.save(product);
         }
 
-        // 设置订单项关联
+        // 设置订单项关联（已在事务内）
         savedOrder.setOrderItems(orderItems);
         return savedOrder;
     }
@@ -143,6 +149,9 @@ public class OrderService {
         // 权限检查
         checkOrderPermission(order);
 
+        // 初始化关联，确保返回时可序列化
+        initializeOrders(Collections.singletonList(order));
+
         return order;
     }
 
@@ -153,19 +162,21 @@ public class OrderService {
         User currentUser = getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
 
+        Page<Order> orderPage;
         if (currentUser.getRole() == UserRole.ADMIN) {
             // 管理员：查看所有订单
-            Page<Order> orderPage = orderRepository.findAllByOrderByCreateTimeDesc(pageable);
-            return orderPage.getContent();
+            orderPage = orderRepository.findAllByOrderByCreateTimeDesc(pageable);
         } else if (currentUser.getRole() == UserRole.SELLER) {
             // 商家：查看自己店铺的订单
-            Page<Order> orderPage = orderRepository.findBySellerIdOrderByCreateTimeDesc(currentUser.getId(), pageable);
-            return orderPage.getContent();
+            orderPage = orderRepository.findBySellerIdOrderByCreateTimeDesc(currentUser.getId(), pageable);
         } else {
             // 顾客：查看自己的订单
-            Page<Order> orderPage = orderRepository.findByUserIdOrderByCreateTimeDesc(currentUser.getId(), pageable);
-            return orderPage.getContent();
+            orderPage = orderRepository.findByUserIdOrderByCreateTimeDesc(currentUser.getId(), pageable);
         }
+
+        List<Order> orders = orderPage.getContent();
+        initializeOrders(orders);
+        return orders;
     }
 
     /**
@@ -180,7 +191,9 @@ public class OrderService {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Order> orderPage = orderRepository.findBySellerIdOrderByCreateTimeDesc(currentUser.getId(), pageable);
-        return orderPage.getContent();
+        List<Order> orders = orderPage.getContent();
+        initializeOrders(orders);
+        return orders;
     }
 
     /**
@@ -194,7 +207,9 @@ public class OrderService {
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Order> orderPage = orderRepository.findAllByOrderByCreateTimeDesc(pageable);
-        return orderPage.getContent();
+        List<Order> orders = orderPage.getContent();
+        initializeOrders(orders);
+        return orders;
     }
 
     /**
@@ -204,15 +219,20 @@ public class OrderService {
         User currentUser = getCurrentUser();
         Pageable pageable = PageRequest.of(page, size);
 
+        Page<Order> orderPage;
         if (currentUser.getRole() == UserRole.ADMIN) {
-            return orderRepository.findByStatusOrderByCreateTimeDesc(status, pageable).getContent();
+            orderPage = orderRepository.findByStatusOrderByCreateTimeDesc(status, pageable);
         } else if (currentUser.getRole() == UserRole.SELLER) {
-            return orderRepository.findBySellerIdAndStatusOrderByCreateTimeDesc(
-                    currentUser.getId(), status, pageable).getContent();
+            orderPage = orderRepository.findBySellerIdAndStatusOrderByCreateTimeDesc(
+                    currentUser.getId(), status, pageable);
         } else {
-            return orderRepository.findByUserIdAndStatusOrderByCreateTimeDesc(
-                    currentUser.getId(), status, pageable).getContent();
+            orderPage = orderRepository.findByUserIdAndStatusOrderByCreateTimeDesc(
+                    currentUser.getId(), status, pageable);
         }
+
+        List<Order> orders = orderPage.getContent();
+        initializeOrders(orders);
+        return orders;
     }
 
     /**
@@ -323,7 +343,9 @@ public class OrderService {
                     currentUser.getId(), keyword, pageable);
         }
 
-        return orderPage.getContent();
+        List<Order> orders = orderPage.getContent();
+        initializeOrders(orders);
+        return orders;
     }
 
     /**
@@ -450,7 +472,8 @@ public class OrderService {
                 OrderStatus.PAID, Arrays.asList(OrderStatus.DELIVERED, OrderStatus.CANCELLED),
                 OrderStatus.DELIVERED, Arrays.asList(OrderStatus.COMPLETED),
                 OrderStatus.COMPLETED, List.of(),
-                OrderStatus.CANCELLED, List.of()
+                OrderStatus.CANCELLED, List.of(),
+                OrderStatus.REFUNDED, List.of()
         );
 
         List<OrderStatus> allowed = allowedTransitions.get(currentStatus);
@@ -477,14 +500,21 @@ public class OrderService {
      * 获取当前登录用户
      */
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("用户未认证");
+        Long userId = UserContext.getCurrentUserId();
+        UserRole role = UserContext.getCurrentUserRole();
+        String username = UserContext.getCurrentUsername();
+
+        if (userId == null || role == null || username == null) {
+            throw new RuntimeException("用户未登录");
         }
 
-        String username = authentication.getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        // 创建用户对象
+        User user = new User();
+        user.setId(userId);
+        user.setRole(role);
+        user.setUsername(username);
+
+        return user;
     }
 
     /**
@@ -492,5 +522,29 @@ public class OrderService {
      */
     private String generateOrderNumber() {
         return "ORD" + System.currentTimeMillis() + (int)(Math.random() * 1000);
+    }
+
+    /**
+     * 在事务内强制初始化 orderItems 及其常用关联（防止 LazyInitializationException）
+     */
+    private void initializeOrders(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) return;
+        try {
+            for (Order o : orders) {
+                if (o == null) continue;
+                if (o.getOrderItems() != null) {
+                    Hibernate.initialize(o.getOrderItems());
+                    o.getOrderItems().forEach(it -> {
+                        try {
+                            if (it.getProduct() != null) Hibernate.initialize(it.getProduct());
+                        } catch (Exception ignored) {
+                        }
+                    });
+                }
+            }
+        } catch (Exception ex) {
+            // 记录错误但不抛出，方便 Controller 层处理
+            System.err.println("初始化订单关联失败: " + ex.getMessage());
+        }
     }
 }

@@ -3,14 +3,14 @@ package com.example.ishopping.service;
 import com.example.ishopping.entity.Product;
 import com.example.ishopping.entity.ProductStatus;
 import com.example.ishopping.entity.User;
+import com.example.ishopping.entity.UserRole;
 import com.example.ishopping.repository.ProductRepository;
 import com.example.ishopping.repository.UserRepository;
+import com.example.ishopping.util.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -133,17 +133,85 @@ public class ProductService {
     }
 
     /**
+     * 根据分类获取商品
+     */
+    public List<Product> getProductsByCategory(String category, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = productRepository.findByCategoryAndStatusOrderByCreateTimeDesc(category, ProductStatus.ON_SALE, pageable);
+        return productPage.getContent();
+    }
+
+    /**
+     * 搜索商品
+     */
+    public List<Product> searchProducts(String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> productPage = productRepository.findByNameContainingOrDescriptionContainingAndStatus(keyword, ProductStatus.ON_SALE, pageable);
+        return productPage.getContent();
+    }
+
+    /**
+     * 获取所有分类
+     */
+    public List<String> getAllCategories() {
+        // 这里需要实现获取所有分类的逻辑
+        // 暂时返回常用分类
+        return List.of("手机", "电脑", "家电", "服装", "食品", "美妆", "运动", "图书", "其他");
+    }
+
+    /**
+     * 设置商品图片
+     */
+    public Product setProductImage(Long productId, String imageUrl) {
+        Product product = getProductById(productId);
+        User currentUser = getCurrentUser();
+
+        // 验证商品所有权
+        if (!product.getSellerId().equals(currentUser.getId())) {
+            throw new RuntimeException("只能修改自己的商品图片");
+        }
+
+        product.setImageUrl(imageUrl);
+        product.setUpdateTime(LocalDateTime.now());
+        return productRepository.save(product);
+    }
+
+    /**
+     * 移除商品图片
+     */
+    public Product removeProductImage(Long productId) {
+        Product product = getProductById(productId);
+        User currentUser = getCurrentUser();
+
+        // 验证商品所有权
+        if (!product.getSellerId().equals(currentUser.getId())) {
+            throw new RuntimeException("只能移除自己的商品图片");
+        }
+
+        product.setImageUrl(null);
+        product.setUpdateTime(LocalDateTime.now());
+        return productRepository.save(product);
+    }
+
+    /**
      * 获取当前登录用户
      */
     private User getCurrentUser() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()) {
-            throw new RuntimeException("用户未认证");
+        Long userId = UserContext.getCurrentUserId();
+        UserRole role = UserContext.getCurrentUserRole();
+        String username = UserContext.getCurrentUsername();
+
+        if (userId == null || role == null || username == null) {
+            throw new RuntimeException("用户未登录");
         }
 
-        String username = authentication.getName();
-        return userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        // 创建用户对象
+        User user = new User();
+        user.setId(userId);
+        user.setRole(role);
+        user.setUsername(username);
+
+        return user;
     }
 
     /**

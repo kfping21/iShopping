@@ -59,4 +59,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Long countByStatus(OrderStatus status);
     Long countBySellerIdAndStatus(Long sellerId, OrderStatus status);
     Long countByUserIdAndStatus(Long userId, OrderStatus status);
+    // 在 OrderRepository.java 末尾添加这个方法
+    Optional<Order> findByOrderNumber(String orderNumber);
 }

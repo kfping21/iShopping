@@ -1,58 +1,26 @@
-package com.example.ishopping.entity;
+// UserDTO.java
+package com.example.ishopping.dto;
 
+import com.example.ishopping.entity.UserRole;
 import lombok.Data;
-import jakarta.persistence.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "users")
 @Data
-public class User {
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+public class UserDTO {
     private Long id;
-
-    @Column(unique = true, nullable = false)
     private String username;
-
-    @Column(nullable = false)
     private String password;
-
     private String email;
     private String phone;
-    private String avatar; // 用户头像
-
-    @Enumerated(EnumType.STRING)
     private UserRole role;
-
-    private BigDecimal balance = BigDecimal.ZERO; // 用户余额
-    private Integer points = 0; // 积分
-    private String shippingAddress; // 收货地址
-
+    private String avatar;
+    private Integer points;
+    private String shippingAddress;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 
-    @Column(nullable = false)
-    private String status = "active"; // 用户状态：active, inactive, 等
-
-    public String getStatus() {
-        return status;
-    }
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    @PrePersist
-    protected void onCreate() {
-        createTime = LocalDateTime.now();
-        updateTime = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updateTime = LocalDateTime.now();
-    }
+    // 状态字段（用于前端显示）
+    private String status = "active";
 
     public Long getId() {
         return id;
@@ -94,14 +62,6 @@ public class User {
         this.phone = phone;
     }
 
-    public String getAvatar() {
-        return avatar;
-    }
-
-    public void setAvatar(String avatar) {
-        this.avatar = avatar;
-    }
-
     public UserRole getRole() {
         return role;
     }
@@ -110,12 +70,12 @@ public class User {
         this.role = role;
     }
 
-    public BigDecimal getBalance() {
-        return balance;
+    public String getAvatar() {
+        return avatar;
     }
 
-    public void setBalance(BigDecimal balance) {
-        this.balance = balance;
+    public void setAvatar(String avatar) {
+        this.avatar = avatar;
     }
 
     public Integer getPoints() {
@@ -148,5 +108,13 @@ public class User {
 
     public void setUpdateTime(LocalDateTime updateTime) {
         this.updateTime = updateTime;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }

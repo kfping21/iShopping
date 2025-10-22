@@ -3,19 +3,19 @@ USE ishopping;
 
 -- 插入管理员用户 (密码: admin123)
 INSERT INTO users (username, password, email, phone, role, balance, points) VALUES
-    ('admin', '$2a$10$ABC123def456ghI789JKLm.ns2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'admin@ishopping.com', '13800138000', 'ADMIN', 10000.00, 1000);
+    ('admin', 'admin123', 'admin@ishopping.com', '13800138000', 'ADMIN', 10000.00, 1000);
 
 -- 插入商家用户 (密码: seller123)
 INSERT INTO users (username, password, email, phone, role, balance, points) VALUES
-                                                                                ('tech_store', '$2a$10$DEF456abc789ghI012JKLm.ns2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'tech@ishopping.com', '13900139000', 'SELLER', 5000.00, 500),
-                                                                                ('fashion_shop', '$2a$10$GHI789def012jkL345MNOn.s2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'fashion@ishopping.com', '13700137000', 'SELLER', 3000.00, 300),
-                                                                                ('book_store', '$2a$10$JKL012ghi345mnO678PQRs.t2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'books@ishopping.com', '13600136000', 'SELLER', 2000.00, 200);
+                                                                                ('tech_store', 'seller123', 'tech@ishopping.com', '13900139000', 'SELLER', 5000.00, 500),
+                                                                                ('fashion_shop', 'seller123', 'fashion@ishopping.com', '13700137000', 'SELLER', 3000.00, 300),
+                                                                                ('book_store', 'seller123', 'books@ishopping.com', '13600136000', 'SELLER', 2000.00, 200);
 
 -- 插入普通用户 (密码: user123)
 INSERT INTO users (username, password, email, phone, role, balance, points, shipping_address) VALUES
-                                                                                                  ('zhangsan', '$2a$10$MNO345jkl678pqR901STUv.u2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'zhangsan@email.com', '13500135001', 'CUSTOMER', 1000.00, 100, '北京市朝阳区建国路100号'),
-                                                                                                  ('lisi', '$2a$10$PQR678mno901stU234VWXw.v2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'lisi@email.com', '13500135002', 'CUSTOMER', 800.00, 80, '上海市浦东新区陆家嘴金融中心'),
-                                                                                                  ('wangwu', '$2a$10$STU901opq234vwX567YZAb.w2VQZ1X2Y3Z4a5b6c7d8e9f0g1h2i3j', 'wangwu@email.com', '13500135003', 'CUSTOMER', 1500.00, 150, '广州市天河区珠江新城');
+                                                                                                  ('zhangsan', 'user123', 'zhangsan@email.com', '13500135001', 'CUSTOMER', 1000.00, 100, '北京市朝阳区建国路100号'),
+                                                                                                  ('lisi', 'user123', 'lisi@email.com', '13500135002', 'CUSTOMER', 800.00, 80, '上海市浦东新区陆家嘴金融中心'),
+                                                                                                  ('wangwu', 'user123', 'wangwu@email.com', '13500135003', 'CUSTOMER', 1500.00, 150, '广州市天河区珠江新城');
 
 -- 插入电子产品
 INSERT INTO products (name, description, price, original_price, discount, seller_id, stock, sales, image_url, category, tags, rating, review_count) VALUES
@@ -50,10 +50,10 @@ INSERT INTO shopping_cart (user_id, product_id, quantity) VALUES
                                                               (7, 11, 1);
 
 -- 插入订单数据
-INSERT INTO orders (order_number, user_id, total_amount, discount_amount, shipping_fee, actual_amount, status, shipping_address, receiver_name, receiver_phone, payment_method) VALUES
-                                                                                                                                                                                    ('ORD202412010001', 5, 8398.00, 100.00, 0.00, 8298.00, 'COMPLETED', '北京市朝阳区建国路100号', '张三', '13500135001', '支付宝'),
-                                                                                                                                                                                    ('ORD202412020001', 6, 13258.00, 200.00, 15.00, 13073.00, 'DELIVERED', '上海市浦东新区陆家嘴金融中心', '李四', '13500135002', '微信支付'),
-                                                                                                                                                                                    ('ORD202412030001', 7, 6258.00, 50.00, 10.00, 6218.00, 'PAID', '广州市天河区珠江新城', '王五', '13500135003', '银行卡');
+INSERT INTO orders (order_number, user_id, seller_id, total_amount, discount_amount, shipping_fee, actual_amount, status, shipping_address, receiver_name, receiver_phone, payment_method) VALUES
+                                                                                                                                                                                               ('ORD202412010001', 5, 2, 8398.00, 100.00, 0.00, 8298.00, 'COMPLETED', '北京市朝阳区建国路100号', '张三', '13500135001', '支付宝'),
+                                                                                                                                                                                               ('ORD202412020001', 6, 2, 13258.00, 200.00, 15.00, 13073.00, 'DELIVERED', '上海市浦东新区陆家嘴金融中心', '李四', '13500135002', '微信支付'),
+                                                                                                                                                                                               ('ORD202412030001', 7, 2, 6258.00, 50.00, 10.00, 6218.00, 'PAID', '广州市天河区珠江新城', '王五', '13500135003', '银行卡');
 
 -- 插入订单项数据
 INSERT INTO order_items (order_id, product_id, quantity, price) VALUES

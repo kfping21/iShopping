@@ -20,8 +20,19 @@ public class ProductController {
     @GetMapping
     public ResponseEntity<List<Product>> getProducts(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
-        List<Product> products = productService.getAvailableProducts(page, size);
+            @RequestParam(defaultValue = "20") int size,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) String keyword) {
+        List<Product> products;
+
+        if (category != null && !category.isEmpty()) {
+            products = productService.getProductsByCategory(category, page, size);
+        } else if (keyword != null && !keyword.isEmpty()) {
+            products = productService.searchProducts(keyword, page, size);
+        } else {
+            products = productService.getAvailableProducts(page, size);
+        }
+
         return ResponseEntity.ok(products);
     }
 
@@ -59,5 +70,51 @@ public class ProductController {
             @RequestParam(defaultValue = "20") int size) {
         List<Product> products = productService.getProductsByCurrentSeller(page, size);
         return ResponseEntity.ok(products);
+    }
+
+    @GetMapping("/categories")
+    public ResponseEntity<List<String>> getCategories() {
+        List<String> categories = productService.getAllCategories();
+        return ResponseEntity.ok(categories);
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<List<Product>> searchProducts(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        List<Product> products = productService.searchProducts(keyword, page, size);
+        return ResponseEntity.ok(products);
+    }
+
+    /**
+     * 获取商品的图片URL
+     */
+    @GetMapping("/{id}/image")
+    public ResponseEntity<String> getProductImage(@PathVariable Long id) {
+        Product product = productService.getProductById(id);
+        return ResponseEntity.ok(product.getImageUrl());
+    }
+
+    /**
+     * 设置商品主图
+     */
+    @PutMapping("/{id}/image")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<Product> setProductImage(
+            @PathVariable Long id,
+            @RequestParam String imageUrl) {
+        Product product = productService.setProductImage(id, imageUrl);
+        return ResponseEntity.ok(product);
+    }
+
+    /**
+     * 移除商品图片
+     */
+    @DeleteMapping("/{id}/image")
+    @PreAuthorize("hasRole('SELLER')")
+    public ResponseEntity<Product> removeProductImage(@PathVariable Long id) {
+        Product product = productService.removeProductImage(id);
+        return ResponseEntity.ok(product);
     }
 }
